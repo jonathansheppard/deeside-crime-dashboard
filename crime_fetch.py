@@ -297,6 +297,12 @@ def main():
     (DATA_DIR / "areas.json").write_text(json.dumps(areas, separators=(",", ":")))
     log.info("Wrote areas.json")
 
+    # The front end only needs names, not polygons. Boundaries push areas.json
+    # past a megabyte, so a light version keeps the page load small.
+    lite = [{"id": a["id"], "name": a["name"], "deeside": a["deeside"]} for a in areas]
+    (DATA_DIR / "areas-lite.json").write_text(json.dumps(lite, separators=(",", ":")))
+    log.info("Wrote areas-lite.json")
+
     for date in targets:
         crimes, failed = fetch_month(areas, date)
         if not crimes:

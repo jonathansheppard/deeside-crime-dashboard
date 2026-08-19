@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flintshire Crime Dashboard | Deeside.com</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+  :root {
+    --black:#111111; --white:#ffffff; --bg:#f2f2f2;
+    --grey:#888888; --line:#e0e0e0; --border:#d0d0d0;
+    --blue:#1a4a8a; --red:#cc2200; --green:#1e7a4a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--black);font-size:14px}
+
+  /* ---- control bar ---- */
+  .bar{background:var(--black);padding:12px 16px;position:sticky;top:0;z-index:500}
+  .bar-in{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:18px;
+    letter-spacing:.04em;text-transform:uppercase;color:var(--white);margin-right:4px}
+  .bar label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#aaa}
+  .bar select{font-family:'Barlow',sans-serif;font-size:13px;font-weight:500;
+    padding:7px 28px 7px 10px;border:1px solid #444;border-radius:3px;background:#222;
+    color:var(--white);cursor:pointer;appearance:none;max-width:260px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23aaa' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 9px center}
+  .bar select:focus{outline:2px solid #6ab0f5;outline-offset:1px}
+  .status{font-size:12px;color:#888;margin-left:auto}
+  .status.err{color:#ff6b6b}
+
+  .main{padding:14px;max-width:1600px;margin:0 auto}
+
+  .panel{background:var(--white);border:1px solid var(--border)}
+  .ph{padding:10px 14px;border-bottom:1px solid var(--line);
+    display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .pt{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;
+    letter-spacing:.06em;text-transform:uppercase}
+  .ps{font-size:11px;color:var(--grey)}
+  .pb{padding:14px}
+
+  /* ---- trend strip: the thing the old dashboard could not do ---- */
+  .trend{margin-bottom:10px}
+  .months{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;padding:14px 14px 10px;
+    align-items:end;min-height:150px;position:relative}
+  .mcol{background:none;border:0;padding:0;cursor:pointer;font:inherit;
+    display:flex;flex-direction:column;justify-content:flex-end;height:120px;position:relative}
+  .mbar{background:var(--border);border-radius:1px 1px 0 0;width:100%;
+    transition:background .15s,height .3s ease}
+  .mcol:hover .mbar{background:var(--grey)}
+  .mcol[aria-pressed="true"] .mbar{background:var(--red)}
+  .mcol:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .mval{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;
+    text-align:center;margin-bottom:3px;color:var(--grey)}
+  .mcol[aria-pressed="true"] .mval{color:var(--red);font-size:14px}
+  .mlab{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--grey);
+    text-align:center;margin-top:5px;font-weight:600}
+  .mcol[aria-pressed="true"] .mlab{color:var(--black)}
+  .avgline{position:absolute;left:14px;right:14px;border-top:1px dashed var(--blue);
+    pointer-events:none}
+  .avgtag{position:absolute;right:14px;transform:translateY(-100%);font-size:9px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--blue);font-weight:700;
+    background:var(--white);padding:0 4px}
+
+  /* ---- stats ---- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:8px;margin-bottom:10px}
+  .card{background:var(--white);border:1px solid var(--border);
+    border-top:3px solid var(--black);padding:14px 16px}
+  .card.red{border-top-color:var(--red)}
+  .card.blue{border-top-color:var(--blue)}
+  .cl{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--grey);
+    font-weight:600;margin-bottom:5px}
+  .cv{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:800;line-height:1}
+  .cv.sm{font-size:17px;margin-top:5px;line-height:1.2}
+  .cs{font-size:11px;color:var(--grey);margin-top:3px}
+  .up{color:var(--red)} .down{color:var(--green)}
+
+  .g-map{display:grid;grid-template-columns:3fr 2fr;gap:10px;margin-bottom:10px}
+  .g-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  @media(max-width:820px){.g-map,.g-2{grid-template-columns:1fr}
+    .months{grid-template-columns:repeat(6,1fr);row-gap:14px}}
+
+  #map{height:380px;width:100%;background:var(--bg)}
+  .cw{position:relative;height:280px}
+  .cw-md{position:relative;height:320px}
+
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--grey);
+    font-weight:600;text-align:left;padding:6px 10px;border-bottom:2px solid var(--line);
+    background:#fafafa}
+  td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover td{background:#f9f9f9}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;flex-shrink:0}
+  .cn{display:flex;align-items:center}
+  .barw{background:var(--line);border-radius:2px;height:5px;overflow:hidden;min-width:70px}
+  .barf{height:100%;border-radius:2px}
+  .num{text-align:right;font-weight:600}
+  .pct{text-align:right;color:var(--grey)}
+  .delta{text-align:right;font-weight:600;font-size:11px}
+
+  .src{font-size:11px;color:var(--grey);padding:10px 0 4px;line-height:1.6}
+  .src a{color:var(--grey)}
+
+  .loading{padding:50px 20px;text-align:center;color:var(--grey)}
+  .spin{display:inline-block;width:22px;height:22px;border:2px solid var(--line);
+    border-top-color:var(--black);border-radius:50%;animation:sp .7s linear infinite;
+    margin-bottom:10px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media(prefers-reduced-motion:reduce){
+    *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="bar-in">
+    <span class="title">Flintshire Crime</span>
+    <label for="area">Area</label>
+    <select id="area"><option value="all">All Flintshire</option></select>
+    <span class="status" id="status">Loading…</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="panel trend">
+    <div class="ph">
+      <span class="pt">Twelve Months</span>
+      <span class="ps" id="trend-sub">Select a month to see the detail below</span>
+    </div>
+    <div class="months" id="months"></div>
+  </div>
+
+  <div id="detail">
+    <div class="panel loading"><div class="spin"></div><div>Loading crime data</div></div>
+  </div>
+
+  <div class="src" id="src"></div>
+</div>
+
+<script>
+const DATA = 'data/';
+const CAT = {
+  'anti-social-behaviour':'#e67e22','bicycle-theft':'#3498db','burglary':'#c0392b',
+  'criminal-damage-arson':'#8e44ad','drugs':'#16a085','other-theft':'#d68910',
+  'possession-of-weapons':'#922b21','public-order':'#1a5276','robbery':'#7b241c',
+  'shoplifting':'#1e8449','theft-from-the-person':'#b7950b','vehicle-crime':'#1a7a4a',
+  'violent-crime':'#c0392b','violence-and-sexual-offences':'#c0392b',
+  'other-crime':'#7f8c8d','miscellaneous-incidents':'#95a5a6'
+};
+const colour = c => CAT[c] || '#95a5a6';
+const label = c => c.replace(/-/g,' ').replace(/\b\w/g, m => m.toUpperCase());
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const monthName = d => { const [y,m] = d.split('-'); return MON[+m-1] + ' ' + y; };
+const monthShort = d => { const [y,m] = d.split('-'); return MON[+m-1] + " '" + y.slice(2); };
+
+let index = null, areas = [], deeside = [];
+let selected = null, area = 'all';
+let map = null, charts = [];
+const cache = new Map();
+
+const status = (msg, err) => {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status' + (err ? ' err' : '');
+};
+
+// Totals for the trend come from the pre-computed per-area counts in
+// index.json, so switching area never needs to download a month file.
+function totalFor(m) {
+  if (area === 'all') return m.total;
+  const ids = area === 'deeside' ? deeside : [area];
+  return ids.reduce((sum, id) => sum + (m.by_area[id] || 0), 0);
+}
+
+function areaLabel() {
+  if (area === 'all') return 'All Flintshire';
+  if (area === 'deeside') return 'Key Deeside areas';
+  const a = areas.find(x => x.id === area);
+  return a ? a.name : area;
+}
+
+// ---------------------------------------------------------------- trend strip
+function drawTrend() {
+  const months = [...index.months].reverse();      // oldest first
+  const totals = months.map(totalFor);
+  const peak = Math.max(...totals, 1);
+  const avg = totals.reduce((a,b) => a+b, 0) / totals.length;
+
+  const wrap = document.getElementById('months');
+  wrap.innerHTML = '';
+
+  months.forEach((m, i) => {
+    const t = totals[i];
+    const btn = document.createElement('button');
+    btn.className = 'mcol';
+    btn.setAttribute('aria-pressed', m.month === selected);
+    btn.setAttribute('aria-label', `${monthName(m.month)}, ${t} crimes`);
+    btn.innerHTML =
+      `<div class="mval">${t.toLocaleString()}</div>` +
+      `<div class="mbar" style="height:${Math.max((t/peak)*100, 2)}%"></div>` +
+      `<div class="mlab">${monthShort(m.month)}</div>`;
+    btn.onclick = () => select(m.month);
+    btn.onkeydown = e => {
+      const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (!step) return;
+      e.preventDefault();
+      const next = months[i + step];
+      if (next) { select(next.month); wrap.children[i + step].focus(); }
+    };
+    wrap.appendChild(btn);
+  });
+
+  // Average reference line, drawn over the bars.
+  const line = document.createElement('div');
+  line.className = 'avgline';
+  const barTop = 10 + 22;                       // panel padding plus the value row
+  line.style.top = `${barTop + (1 - avg/peak) * 120}px`;
+  const tag = document.createElement('span');
+  tag.className = 'avgtag';
+  tag.textContent = `12 month average ${Math.round(avg).toLocaleString()}`;
+  line.appendChild(tag);
+  wrap.appendChild(line);
+
+  document.getElementById('trend-sub').textContent =
+    `${areaLabel()} · select a month for the detail below`;
+  return { totals, months, avg };
+}
+
+// ---------------------------------------------------------------- month detail
+async function loadMonth(month) {
+  if (cache.has(month)) return cache.get(month);
+  const r = await fetch(`${DATA}${month}.json`);
+  if (!r.ok) throw new Error(`Could not load ${monthName(month)}`);
+  const d = await r.json();
+  cache.set(month, d);
+  return d;
+}
+
+async function select(month) {
+  selected = month;
+  document.querySelectorAll('.mcol').forEach(b =>
+    b.setAttribute('aria-pressed', b.getAttribute('aria-label').startsWith(monthName(month))));
+  drawTrend();
+  status('Loading ' + monthName(month) + '…');
+
+  let data;
+  try {
+    data = await loadMonth(month);
+  } catch (e) {
+    status(e.message, true);
+    document.getElementById('detail').innerHTML =
+      `<div class="panel loading">That month could not be loaded. Pick another.</div>`;
+    return;
+  }
+
+  const ids = area === 'all' ? null : (area === 'deeside' ? deeside : [area]);
+  const crimes = ids ? data.crimes.filter(c => ids.includes(c.a)) : data.crimes;
+
+  render(crimes, month, data);
+  status(`${crimes.length.toLocaleString()} crimes · ${monthName(month)}`);
+}
+
+function render(crimes, month, raw) {
+  const months = [...index.months].reverse();
+  const totals = months.map(totalFor);
+  const i = months.findIndex(m => m.month === month);
+  const now = totals[i], prev = i > 0 ? totals[i-1] : null;
+  const avg = totals.reduce((a,b)=>a+b,0) / totals.length;
+
+  const cats = {}, outs = {};
+  crimes.forEach(c => {
+    cats[c.c] = (cats[c.c]||0) + 1;
+    if (c.o) outs[c.o] = (outs[c.o]||0) + 1;
+  });
+  const sorted = Object.entries(cats).sort((a,b) => b[1]-a[1]);
+  const top = sorted[0];
+  const withOutcome = crimes.filter(c => c.o).length;
+
+  const change = (a, b) => {
+    if (b === null || !b) return {txt:'no comparison', cls:''};
+    const pc = ((a-b)/b)*100;
+    const dir = pc >= 0 ? 'up' : 'down';
+    return {txt:`${pc >= 0 ? '+' : ''}${pc.toFixed(1)}%`, cls:dir};
+  };
+  const vsPrev = change(now, prev), vsAvg = change(now, avg);
+
+  document.getElementById('detail').innerHTML = `
+    <div class="stats">
+      <div class="card red">
+        <div class="cl">Recorded crimes</div>
+        <div class="cv">${now.toLocaleString()}</div>
+        <div class="cs">${monthName(month)}</div>
+      </div>
+      <div class="card">
+        <div class="cl">On previous month</div>
+        <div class="cv ${vsPrev.cls}">${vsPrev.txt}</div>
+        <div class="cs">${prev !== null ? prev.toLocaleString() + ' in ' + monthName(months[i-1].month) : 'earliest month held'}</div>
+      </div>
+      <div class="card blue">
+        <div class="cl">On 12 month average</div>
+        <div class="cv ${vsAvg.cls}">${vsAvg.txt}</div>
+        <div class="cs">average ${Math.round(avg).toLocaleString()} a month</div>
+      </div>
+      <div class="card">
+        <div class="cl">Most common</div>
+        <div class="cv sm">${top ? label(top[0]) : 'None'}</div>
+        <div class="cs">${top ? top[1] + ' of ' + now.toLocaleString() : ''}</div>
+      </div>
+      <div class="card">
+        <div class="cl">Outcome recorded</div>
+        <div class="cv">${now ? Math.round((withOutcome/now)*100) : 0}%</div>
+        <div class="cs">${withOutcome.toLocaleString()} cases</div>
+      </div>
+    </div>
+
+    <div class="g-map">
+      <div class="panel">
+        <div class="ph"><span class="pt">Where</span>
+          <span class="ps">Locations are approximate. Click a point for detail.</span></div>
+        <div id="map"></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><span class="pt">By type</span><span class="ps">Top ten</span></div>
+        <div class="pb"><div class="cw"><canvas id="cat"></canvas></div></div>
+      </div>
+    </div>
+
+    <div class="g-2">
+      <div class="panel">
+        <div class="ph"><span class="pt">Full breakdown</span>
+          <span class="ps">Change is against the 12 month average</span></div>
+        <table>
+          <thead><tr><th>Category</th><th class="num">Count</th><th class="pct">Share</th>
+            <th class="delta">Change</th><th style="min-width:70px"></th></tr></thead>
+          <tbody>${sorted.map(([c,n]) => {
+            const catAvg = months.reduce((s,m) => s + ((m.categories||{})[c]||0), 0) / months.length;
+            const d = area === 'all' && catAvg
+              ? (() => { const p = ((n-catAvg)/catAvg)*100;
+                  return `<span class="${p>=0?'up':'down'}">${p>=0?'+':''}${p.toFixed(0)}%</span>`; })()
+              : '<span style="color:var(--grey)">·</span>';
+            return `<tr>
+              <td><span class="cn"><span class="dot" style="background:${colour(c)}"></span>${label(c)}</span></td>
+              <td class="num">${n}</td>
+              <td class="pct">${((n/crimes.length)*100).toFixed(1)}%</td>
+              <td class="delta">${d}</td>
+              <td><div class="barw"><div class="barf" style="width:${(n/sorted[0][1])*100}%;background:${colour(c)}"></div></div></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <div class="ph"><span class="pt">What happened next</span>
+          <span class="ps">Recorded outcomes</span></div>
+        <div class="pb"><div class="cw-md"><canvas id="out"></canvas></div></div>
+      </div>
+    </div>`;
+
+  drawMap(crimes);
+  drawCats(sorted.slice(0,10), crimes.length);
+  drawOutcomes(outs);
+
+  document.getElementById('src').innerHTML =
+    `Source: <a href="https://data.police.uk" target="_blank" rel="noopener">data.police.uk</a>, ` +
+    `North Wales Police, published under the Open Government Licence. ` +
+    `${areaLabel()}, ${monthName(month)}. Retrieved ${new Date(raw.fetched).toLocaleDateString('en-GB')}. ` +
+    `Locations are approximate points rather than exact addresses, so several crimes can share one marker. ` +
+    `Police.uk publishes about two months in arrears. ` +
+    `Totals are close but not exact: crimes recorded without a persistent identifier cannot be ` +
+    `de-duplicated where neighbourhood boundaries meet.`;
+}
+
+// ---------------------------------------------------------------- charts
+function killCharts(){ charts.forEach(c => c.destroy()); charts = []; }
+
+function drawMap(crimes) {
+  if (map) { map.remove(); map = null; }
+  map = L.map('map', {scrollWheelZoom:false});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    {attribution:'© OpenStreetMap © CARTO', maxZoom:16}).addTo(map);
+
+  const pts = crimes.filter(c => c.lat && c.lng);
+  if (!pts.length) { map.setView([53.19,-3.09], 10); return; }
+
+  const group = L.featureGroup();
+  pts.forEach(c => {
+    L.circleMarker([c.lat, c.lng], {radius:5, fillColor:colour(c.c), color:'#fff',
+      weight:1, opacity:.9, fillOpacity:.78})
+     .bindPopup(`<strong>${label(c.c)}</strong><br>${c.s || 'Location not given'}` +
+                (c.o ? `<br><small>${c.o}</small>` : ''))
+     .addTo(group);
+  });
+  group.addTo(map);
+  map.fitBounds(group.getBounds(), {padding:[20,20], maxZoom:13});
+}
+
+function drawCats(sorted, total) {
+  const ctx = document.getElementById('cat')?.getContext('2d');
+  if (!ctx) return;
+  charts.push(new Chart(ctx, {
+    type:'doughnut',
+    data:{labels:sorted.map(([c])=>label(c)),
+      datasets:[{data:sorted.map(([,n])=>n),
+        backgroundColor:sorted.map(([c])=>colour(c)), borderWidth:2, borderColor:'#fff'}]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'right',
+        labels:{font:{family:'Barlow',size:11}, boxWidth:10, padding:7}},
+        tooltip:{callbacks:{label:c => ` ${c.label}: ${c.raw} (${((c.raw/total)*100).toFixed(1)}%)`}}}}
+  }));
+}
+
+function drawOutcomes(outs) {
+  const ctx = document.getElementById('out')?.getContext('2d');
+  if (!ctx) return;
+  const s = Object.entries(outs).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  charts.push(new Chart(ctx, {
+    type:'bar',
+    data:{labels:s.map(([o])=>o.length>34?o.slice(0,32)+'…':o),
+      datasets:[{data:s.map(([,v])=>v), backgroundColor:'#111', borderRadius:2}]},
+    options:{indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'#eee'}, ticks:{font:{family:'Barlow',size:11}}},
+              y:{grid:{display:false}, ticks:{font:{family:'Barlow',size:11}}}}}
+  }));
+}
+
+// ---------------------------------------------------------------- start
+async function start() {
+  try {
+    const [iR, aR] = await Promise.all([
+      fetch(DATA + 'index.json'),
+      fetch(DATA + 'areas-lite.json')
+    ]);
+    if (!iR.ok) throw new Error('Crime data is not available right now');
+    index = await iR.json();
+    areas = aR.ok ? await aR.json() : [];
+    deeside = areas.filter(a => a.deeside).map(a => a.id);
+
+    const sel = document.getElementById('area');
+    if (deeside.length) {
+      const o = document.createElement('option');
+      o.value = 'deeside'; o.textContent = 'Key Deeside areas';
+      sel.appendChild(o);
+    }
+    [...areas].sort((a,b) => a.name.localeCompare(b.name)).forEach(a => {
+      const o = document.createElement('option');
+      o.value = a.id; o.textContent = a.name;
+      sel.appendChild(o);
+    });
+    sel.onchange = () => {
+      area = sel.value;
+      killCharts();
+      drawTrend();
+      select(selected);
+    };
+
+    selected = index.months[0].month;
+    drawTrend();
+    await select(selected);
+  } catch (e) {
+    status(e.message, true);
+    document.getElementById('detail').innerHTML =
+      `<div class="panel loading">Crime data could not be loaded. Try again shortly.</div>`;
+  }
+}
+start();
+</script>
+</body>
+</html>
