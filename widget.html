@@ -4,7 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Crime in Flintshire</title>
-<link rel="stylesheet" href="../deeside-widgets/house.css?v=3">
+<script>window.__d=fetch('data/index.json?t='+Math.floor(Date.now()/3600000)).then(function(r){return r.json()});</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="../deeside-widgets/house.css?v=4">
 <style>
 .sub { padding: 10px 14px 0; font-size: 12.5px; color: var(--muted); }
 .stats { display: grid; grid-template-columns: 1fr 1fr; padding: 4px 0 10px; }
@@ -32,7 +35,7 @@ const NAMES = {'violent-crime':'Violence and sexual offences','anti-social-behav
   'shoplifting':'Shoplifting','public-order':'Public order','other-theft':'Other theft','vehicle-crime':'Vehicle crime','other-crime':'Other crime',
   'burglary':'Burglary','drugs':'Drugs','possession-of-weapons':'Possession of weapons','bicycle-theft':'Bicycle theft','robbery':'Robbery','theft-from-the-person':'Theft from the person'};
 const fm = (m, o) => new Date(m + '-15T12:00:00Z').toLocaleDateString('en-GB', o);
-fetch('data/index.json?t=' + Math.floor(Date.now() / 3600000)).then(r => r.json()).then(d => {
+window.__d.then(d => {
   const ms = d.months, cur = ms[0], prev = ms[1], last12 = ms.slice(0, 12).reverse();
   const ch = prev ? Math.round((cur.total - prev.total) / prev.total * 1000) / 10 : null;
   const max = Math.max(...last12.map(m => m.total));
