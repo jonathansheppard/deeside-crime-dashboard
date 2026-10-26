@@ -3,472 +3,184 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Flintshire Crime Dashboard | Deeside.com</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<title>Crime in Flintshire | Deeside.com</title>
+<link rel="stylesheet" href="../deeside-widgets/house.css?v=3">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-  :root {
-    --black:#111111; --white:#ffffff; --bg:#f2f2f2;
-    --grey:#888888; --line:#e0e0e0; --border:#d0d0d0;
-    --blue:#1a4a8a; --red:#cc2200; --green:#1e7a4a;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--black);font-size:14px}
-
-  /* ---- control bar ---- */
-  .bar{background:var(--black);padding:12px 16px;position:sticky;top:0;z-index:500}
-  .bar-in{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-  .title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:18px;
-    letter-spacing:.04em;text-transform:uppercase;color:var(--white);margin-right:4px}
-  .bar label{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#aaa}
-  .bar select{font-family:'Barlow',sans-serif;font-size:13px;font-weight:500;
-    padding:7px 28px 7px 10px;border:1px solid #444;border-radius:3px;background:#222;
-    color:var(--white);cursor:pointer;appearance:none;max-width:260px;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23aaa' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-    background-repeat:no-repeat;background-position:right 9px center}
-  .bar select:focus{outline:2px solid #6ab0f5;outline-offset:1px}
-  .status{font-size:12px;color:#888;margin-left:auto}
-  .status.err{color:#ff6b6b}
-
-  .main{padding:14px;max-width:1600px;margin:0 auto}
-
-  .panel{background:var(--white);border:1px solid var(--border)}
-  .ph{padding:10px 14px;border-bottom:1px solid var(--line);
-    display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
-  .pt{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;
-    letter-spacing:.06em;text-transform:uppercase}
-  .ps{font-size:11px;color:var(--grey)}
-  .pb{padding:14px}
-
-  /* ---- trend strip: the thing the old dashboard could not do ---- */
-  .trend{margin-bottom:10px}
-  .months{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;padding:14px 14px 10px;
-    align-items:end;min-height:150px;position:relative}
-  .mcol{background:none;border:0;padding:0;cursor:pointer;font:inherit;
-    display:flex;flex-direction:column;justify-content:flex-end;height:120px;position:relative}
-  .mbar{background:var(--border);border-radius:1px 1px 0 0;width:100%;
-    transition:background .15s,height .3s ease}
-  .mcol:hover .mbar{background:var(--grey)}
-  .mcol[aria-pressed="true"] .mbar{background:var(--red)}
-  .mcol:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
-  .mval{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;
-    text-align:center;margin-bottom:3px;color:var(--grey)}
-  .mcol[aria-pressed="true"] .mval{color:var(--red);font-size:14px}
-  .mlab{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--grey);
-    text-align:center;margin-top:5px;font-weight:600}
-  .mcol[aria-pressed="true"] .mlab{color:var(--black)}
-  .avgline{position:absolute;left:14px;right:14px;border-top:1px dashed var(--blue);
-    pointer-events:none}
-  .avgtag{position:absolute;right:14px;transform:translateY(-100%);font-size:9px;
-    letter-spacing:.08em;text-transform:uppercase;color:var(--blue);font-weight:700;
-    background:var(--white);padding:0 4px}
-
-  /* ---- stats ---- */
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-    gap:8px;margin-bottom:10px}
-  .card{background:var(--white);border:1px solid var(--border);
-    border-top:3px solid var(--black);padding:14px 16px}
-  .card.red{border-top-color:var(--red)}
-  .card.blue{border-top-color:var(--blue)}
-  .cl{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--grey);
-    font-weight:600;margin-bottom:5px}
-  .cv{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:800;line-height:1}
-  .cv.sm{font-size:17px;margin-top:5px;line-height:1.2}
-  .cs{font-size:11px;color:var(--grey);margin-top:3px}
-  .up{color:var(--red)} .down{color:var(--green)}
-
-  .g-map{display:grid;grid-template-columns:3fr 2fr;gap:10px;margin-bottom:10px}
-  .g-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-  @media(max-width:820px){.g-map,.g-2{grid-template-columns:1fr}
-    .months{grid-template-columns:repeat(6,1fr);row-gap:14px}}
-
-  #map{height:380px;width:100%;background:var(--bg)}
-  .cw{position:relative;height:280px}
-  .cw-md{position:relative;height:320px}
-
-  table{width:100%;border-collapse:collapse;font-size:12px}
-  th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--grey);
-    font-weight:600;text-align:left;padding:6px 10px;border-bottom:2px solid var(--line);
-    background:#fafafa}
-  td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
-  tr:last-child td{border-bottom:none}
-  tbody tr:hover td{background:#f9f9f9}
-  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;flex-shrink:0}
-  .cn{display:flex;align-items:center}
-  .barw{background:var(--line);border-radius:2px;height:5px;overflow:hidden;min-width:70px}
-  .barf{height:100%;border-radius:2px}
-  .num{text-align:right;font-weight:600}
-  .pct{text-align:right;color:var(--grey)}
-  .delta{text-align:right;font-weight:600;font-size:11px}
-
-  .src{font-size:11px;color:var(--grey);padding:10px 0 4px;line-height:1.6}
-  .src a{color:var(--grey)}
-
-  .loading{padding:50px 20px;text-align:center;color:var(--grey)}
-  .spin{display:inline-block;width:22px;height:22px;border:2px solid var(--line);
-    border-top-color:var(--black);border-radius:50%;animation:sp .7s linear infinite;
-    margin-bottom:10px}
-  @keyframes sp{to{transform:rotate(360deg)}}
-  @media(prefers-reduced-motion:reduce){
-    *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+body { background: #fff; }
+.page { max-width: 1000px; margin: 0 auto; padding: 0 0 24px; }
+.top h1 { font-size: 28px; font-weight: 800; color: var(--head); margin: 6px 0 4px; }
+.top p { font-size: 15px; color: var(--ink); line-height: 1.5; max-width: 720px; }
+.bar-pick { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin: 14px 0 6px; font-size: 14px; }
+.bar-pick select { font: inherit; font-size: 14px; padding: 7px 10px; border: 1px solid #ced4da; border-radius: 4px; background: #fff; max-width: 100%; }
+.bar-pick .m { color: var(--muted); }
+.sec { border-top: 4px solid var(--green); background: #fff; margin-top: 18px; }
+.sec h2 { font-size: 18px; font-weight: 800; color: var(--head); padding: 12px 0 4px; }
+.sec .sub { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.stat { padding: 12px 14px; }
+.stat + .stat { border-left: 1px solid var(--rule); }
+.stat .big { font-size: 30px; font-weight: 800; color: var(--head); letter-spacing: -.8px; line-height: 1.1; }
+.stat .big.up { color: var(--red); }
+.stat .big.down { color: var(--green-dk); }
+.stat .big.word { font-size: 19px; letter-spacing: -.2px; padding-top: 6px; }
+.stat .lbl { font-size: 12.5px; color: var(--muted); line-height: 1.35; margin-top: 3px; }
+@media (max-width: 640px) { .stats { grid-template-columns: 1fr 1fr; } .stat:nth-child(3) { border-left: 0; } .stat:nth-child(n+3) { border-top: 1px solid var(--rule); } }
+.chart { display: flex; align-items: flex-end; gap: 4px; height: 150px; border-bottom: 1px solid #ced4da; padding-top: 18px; }
+.chart button { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; min-width: 0; }
+.chart button i { display: block; width: 100%; background: #ced4da; border-radius: 2px 2px 0 0; }
+.chart button:hover i { background: #adb5bd; }
+.chart button.on i { background: var(--green); }
+.chart button span { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+.chart button.on span { color: var(--head); font-weight: 700; }
+.months { display: flex; gap: 4px; font-size: 11px; color: var(--muted); text-align: center; margin-top: 4px; }
+.months span { flex: 1; min-width: 0; }
+.months b { color: var(--head); }
+.avg { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+@media (max-width: 760px) { .cols { grid-template-columns: 1fr; gap: 0; } }
+.types .t { display: grid; grid-template-columns: 150px 1fr 44px; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--rule); font-size: 13.5px; }
+.types .t .bar { height: 12px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+.types .t .bar i { display: block; height: 100%; background: var(--green-dk); }
+.types .t b { text-align: right; color: var(--head); }
+#map { height: 420px; border: 1px solid var(--rule); }
+.areas table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.areas th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 6px 4px; border-bottom: 1px solid #ced4da; }
+.areas td { padding: 7px 4px; border-bottom: 1px solid var(--rule); }
+.areas td.n, .areas th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.areas tr { cursor: pointer; }
+.areas tr:hover td { background: #f8f9fa; }
+.chg.up { color: var(--red); } .chg.down { color: var(--green-dk); }
+.notes { font-size: 13px; color: var(--muted); line-height: 1.55; margin-top: 18px; }
+.notes p { margin-bottom: 8px; }
+.notes a { color: var(--green-dk); text-decoration: underline; }
+.loading { padding: 60px 0; text-align: center; color: var(--muted); }
+.leaflet-popup-content { font-family: 'Open Sans', Arial, sans-serif; font-size: 13px; }
 </style>
 </head>
 <body>
-
-<div class="bar">
-  <div class="bar-in">
-    <span class="title">Flintshire Crime</span>
-    <label for="area">Area</label>
-    <select id="area"><option value="all">All Flintshire</option></select>
-    <span class="status" id="status">Loading…</span>
+<div class="page" id="page">
+  <div class="top">
+    <h1>Crime in Flintshire</h1>
+    <p>Crimes and anti-social behaviour recorded by North Wales Police in Flintshire, month by month, from the official police data. Pick an area, or click a month on the chart.</p>
+  </div>
+  <div class="bar-pick">
+    <label>Area <select id="area"></select></label>
+    <span class="m" id="mlabel"></span>
+  </div>
+  <div id="app"><div class="loading">Loading crime figures…</div></div>
+  <div class="notes">
+    <p>Figures come from <a href="https://data.police.uk/" target="_blank" rel="noopener">data.police.uk</a>, which publishes each month's data about seven weeks after the month ends. Areas are North Wales Police neighbourhood policing areas, not council wards.</p>
+    <p>Locations on the map are approximate: police data places each crime at the centre of a nearby street or area to protect victims' privacy. A crime can be recorded some time after it happened. Small areas can swing a lot from month to month, so look at the trend rather than a single month.</p>
   </div>
 </div>
-
-<div class="main">
-
-  <div class="panel trend">
-    <div class="ph">
-      <span class="pt">Twelve Months</span>
-      <span class="ps" id="trend-sub">Select a month to see the detail below</span>
-    </div>
-    <div class="months" id="months"></div>
-  </div>
-
-  <div id="detail">
-    <div class="panel loading"><div class="spin"></div><div>Loading crime data</div></div>
-  </div>
-
-  <div class="src" id="src"></div>
-</div>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-const DATA = 'data/';
-const CAT = {
-  'anti-social-behaviour':'#e67e22','bicycle-theft':'#3498db','burglary':'#c0392b',
-  'criminal-damage-arson':'#8e44ad','drugs':'#16a085','other-theft':'#d68910',
-  'possession-of-weapons':'#922b21','public-order':'#1a5276','robbery':'#7b241c',
-  'shoplifting':'#1e8449','theft-from-the-person':'#b7950b','vehicle-crime':'#1a7a4a',
-  'violent-crime':'#c0392b','violence-and-sexual-offences':'#c0392b',
-  'other-crime':'#7f8c8d','miscellaneous-incidents':'#95a5a6'
-};
-const colour = c => CAT[c] || '#95a5a6';
-const label = c => c.replace(/-/g,' ').replace(/\b\w/g, m => m.toUpperCase());
-const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const monthName = d => { const [y,m] = d.split('-'); return MON[+m-1] + ' ' + y; };
-const monthShort = d => { const [y,m] = d.split('-'); return MON[+m-1] + " '" + y.slice(2); };
+const NAMES = {'violent-crime':'Violence and sexual offences','anti-social-behaviour':'Anti-social behaviour','criminal-damage-arson':'Criminal damage and arson',
+  'shoplifting':'Shoplifting','public-order':'Public order','other-theft':'Other theft','vehicle-crime':'Vehicle crime','other-crime':'Other crime',
+  'burglary':'Burglary','drugs':'Drugs','possession-of-weapons':'Possession of weapons','bicycle-theft':'Bicycle theft','robbery':'Robbery','theft-from-the-person':'Theft from the person'};
+const COLS = {'violent-crime':'#b91c1c','anti-social-behaviour':'#d97706','criminal-damage-arson':'#7c3aed','shoplifting':'#0f766e','public-order':'#1d6fb8','burglary':'#be185d','vehicle-crime':'#4d7a0c','drugs':'#0891b2'};
+const col = c => COLS[c] || '#6c757d';
+const nm = c => NAMES[c] || c;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+const fmtM = (m, o) => new Date(m + '-15T12:00:00Z').toLocaleDateString('en-GB', o || {month: 'long', year: 'numeric'});
+const pct = (a, b) => b ? Math.round((a - b) / b * 1000) / 10 : null;
+let IDX, AREAS = {}, LIST = [], area = 'all', month, cache = {}, map, layer;
 
-let index = null, areas = [], deeside = [];
-let selected = null, area = 'all';
-let map = null, charts = [];
-const cache = new Map();
+function areaTotal(m, a) {
+  if (a === 'all') return m.total;
+  const ids = a === 'deeside' ? LIST.filter(x => x.deeside).map(x => x.id) : [a];
+  return ids.reduce((n, id) => n + (m.by_area[id] || 0), 0);
+}
+function inArea(c) {
+  if (area === 'all') return true;
+  if (area === 'deeside') return AREAS[c.a] && AREAS[c.a].deeside;
+  return c.a === area;
+}
+const areaName = () => area === 'all' ? 'Flintshire' : area === 'deeside' ? 'the Deeside area' : AREAS[area].name;
 
-const status = (msg, err) => {
-  const el = document.getElementById('status');
-  el.textContent = msg;
-  el.className = 'status' + (err ? ' err' : '');
-};
-
-// Totals for the trend come from the pre-computed per-area counts in
-// index.json, so switching area never needs to download a month file.
-function totalFor(m) {
-  if (area === 'all') return m.total;
-  const ids = area === 'deeside' ? deeside : [area];
-  return ids.reduce((sum, id) => sum + (m.by_area[id] || 0), 0);
+async function monthData(m) {
+  if (!cache[m]) cache[m] = await fetch('data/' + m + '.json').then(r => r.json());
+  return cache[m];
 }
 
-function areaLabel() {
-  if (area === 'all') return 'All Flintshire';
-  if (area === 'deeside') return 'Key Deeside areas';
-  const a = areas.find(x => x.id === area);
-  return a ? a.name : area;
-}
+async function render() {
+  const months = IDX.months.slice(0, 12).reverse();
+  const cur = IDX.months.find(x => x.month === month), i = IDX.months.indexOf(cur), prev = IDX.months[i + 1];
+  const tot = areaTotal(cur, area), ptot = prev ? areaTotal(prev, area) : null;
+  const avg = months.reduce((n, m) => n + areaTotal(m, area), 0) / months.length;
+  const md = await monthData(month);
+  const crimes = md.crimes.filter(inArea);
+  const cats = {}; crimes.forEach(c => cats[c.c] = (cats[c.c] || 0) + 1);
+  const ranked = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+  const withOut = crimes.filter(c => c.o).length, nonAsb = crimes.filter(c => c.c !== 'anti-social-behaviour').length;
+  const dp = pct(tot, ptot), da = pct(tot, avg);
+  const max = Math.max(...months.map(m => areaTotal(m, area)), 1);
+  document.getElementById('mlabel').textContent = 'Showing ' + fmtM(month) + '. Latest available: ' + fmtM(IDX.latest_available) + '.';
 
-// ---------------------------------------------------------------- trend strip
-function drawTrend() {
-  const months = [...index.months].reverse();      // oldest first
-  const totals = months.map(totalFor);
-  const peak = Math.max(...totals, 1);
-  const avg = totals.reduce((a,b) => a+b, 0) / totals.length;
+  let html = `<div class="stats">
+    <div class="stat"><div class="big">${tot.toLocaleString('en-GB')}</div><div class="lbl">crimes recorded in ${esc(areaName())}, ${fmtM(month)}</div></div>
+    <div class="stat"><div class="big ${dp > 0 ? 'up' : dp < 0 ? 'down' : ''}">${dp === null ? 'n/a' : (dp > 0 ? '+' : '') + dp + '%'}</div><div class="lbl">on ${prev ? fmtM(prev.month, {month: 'long'}) : 'the previous month'}${ptot !== null ? ' (' + ptot.toLocaleString('en-GB') + ')' : ''}</div></div>
+    <div class="stat"><div class="big ${da > 0 ? 'up' : da < 0 ? 'down' : ''}">${da === null ? 'n/a' : (da > 0 ? '+' : '') + da + '%'}</div><div class="lbl">on the 12-month average of ${Math.round(avg).toLocaleString('en-GB')}</div></div>
+    <div class="stat"><div class="big word">${ranked[0] ? esc(nm(ranked[0][0])) : 'None'}</div><div class="lbl">most common${ranked[0] ? ', ' + ranked[0][1] + ' of ' + tot : ''}</div></div>
+  </div>`;
 
-  const wrap = document.getElementById('months');
-  wrap.innerHTML = '';
+  html += `<div class="sec"><h2>Twelve months</h2><div class="sub">Crimes recorded each month in ${esc(areaName())}. Click a month to see its detail.</div>
+    <div class="chart">${months.map(m => { const v = areaTotal(m, area); return `<button data-m="${m.month}" class="${m.month === month ? 'on' : ''}" aria-label="${fmtM(m.month)}: ${v} crimes"><span>${v}</span><i style="height:${Math.max(2, v / max * 100)}%"></i></button>`; }).join('')}</div>
+    <div class="months">${months.map(m => `<span>${m.month === month ? '<b>' : ''}${fmtM(m.month, {month: 'short'})}${m.month.endsWith('-01') || m === months[0] ? '<br>' + m.month.slice(0, 4) : ''}${m.month === month ? '</b>' : ''}</span>`).join('')}</div>
+    <div class="avg">12-month average: ${Math.round(avg).toLocaleString('en-GB')} a month.</div></div>`;
 
-  months.forEach((m, i) => {
-    const t = totals[i];
-    const btn = document.createElement('button');
-    btn.className = 'mcol';
-    btn.setAttribute('aria-pressed', m.month === selected);
-    btn.setAttribute('aria-label', `${monthName(m.month)}, ${t} crimes`);
-    btn.innerHTML =
-      `<div class="mval">${t.toLocaleString()}</div>` +
-      `<div class="mbar" style="height:${Math.max((t/peak)*100, 2)}%"></div>` +
-      `<div class="mlab">${monthShort(m.month)}</div>`;
-    btn.onclick = () => select(m.month);
-    btn.onkeydown = e => {
-      const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
-      if (!step) return;
-      e.preventDefault();
-      const next = months[i + step];
-      if (next) { select(next.month); wrap.children[i + step].focus(); }
-    };
-    wrap.appendChild(btn);
-  });
+  html += `<div class="cols"><div class="sec types"><h2>By type</h2><div class="sub">${fmtM(month)}. ${nonAsb ? Math.round(withOut / nonAsb * 100) + '% of crimes other than anti-social behaviour have an outcome recorded so far.' : ''}</div>
+    ${ranked.map(([c, n]) => `<div class="t"><span>${esc(nm(c))}</span><span class="bar"><i style="width:${n / ranked[0][1] * 100}%;background:${col(c)}"></i></span><b>${n}</b></div>`).join('') || '<p class="sub">No crimes recorded.</p>'}
+  </div><div class="sec"><h2>Where</h2><div class="sub">Approximate locations, ${fmtM(month)}. Click a dot for details.</div><div id="map"></div></div></div>`;
 
-  // Average reference line, drawn over the bars.
-  const line = document.createElement('div');
-  line.className = 'avgline';
-  const barTop = 10 + 22;                       // panel padding plus the value row
-  line.style.top = `${barTop + (1 - avg/peak) * 120}px`;
-  const tag = document.createElement('span');
-  tag.className = 'avgtag';
-  tag.textContent = `12 month average ${Math.round(avg).toLocaleString()}`;
-  line.appendChild(tag);
-  wrap.appendChild(line);
-
-  document.getElementById('trend-sub').textContent =
-    `${areaLabel()} · select a month for the detail below`;
-  return { totals, months, avg };
-}
-
-// ---------------------------------------------------------------- month detail
-async function loadMonth(month) {
-  if (cache.has(month)) return cache.get(month);
-  const r = await fetch(`${DATA}${month}.json`);
-  if (!r.ok) throw new Error(`Could not load ${monthName(month)}`);
-  const d = await r.json();
-  cache.set(month, d);
-  return d;
-}
-
-async function select(month) {
-  selected = month;
-  document.querySelectorAll('.mcol').forEach(b =>
-    b.setAttribute('aria-pressed', b.getAttribute('aria-label').startsWith(monthName(month))));
-  drawTrend();
-  status('Loading ' + monthName(month) + '…');
-
-  let data;
-  try {
-    data = await loadMonth(month);
-  } catch (e) {
-    status(e.message, true);
-    document.getElementById('detail').innerHTML =
-      `<div class="panel loading">That month could not be loaded. Pick another.</div>`;
-    return;
+  if (area === 'all' || area === 'deeside') {
+    const ids = LIST.filter(x => area === 'all' || x.deeside);
+    const rows = ids.map(x => ({id: x.id, name: x.name, n: cur.by_area[x.id] || 0, p: prev ? (prev.by_area[x.id] || 0) : null})).sort((a, b) => b.n - a.n);
+    html += `<div class="sec areas"><h2>By area</h2><div class="sub">Neighbourhood policing areas, ${fmtM(month)}. Click an area to see it on its own.</div>
+      <table><thead><tr><th>Area</th><th class="n">Crimes</th><th class="n">Previous month</th></tr></thead><tbody>
+      ${rows.map(r => `<tr data-a="${r.id}"><td>${esc(r.name)}</td><td class="n"><b>${r.n}</b></td><td class="n">${r.p === null ? '' : r.p}</td></tr>`).join('')}
+      </tbody></table></div>`;
   }
-
-  const ids = area === 'all' ? null : (area === 'deeside' ? deeside : [area]);
-  const crimes = ids ? data.crimes.filter(c => ids.includes(c.a)) : data.crimes;
-
-  render(crimes, month, data);
-  status(`${crimes.length.toLocaleString()} crimes · ${monthName(month)}`);
-}
-
-function render(crimes, month, raw) {
-  const months = [...index.months].reverse();
-  const totals = months.map(totalFor);
-  const i = months.findIndex(m => m.month === month);
-  const now = totals[i], prev = i > 0 ? totals[i-1] : null;
-  const avg = totals.reduce((a,b)=>a+b,0) / totals.length;
-
-  const cats = {}, outs = {};
-  crimes.forEach(c => {
-    cats[c.c] = (cats[c.c]||0) + 1;
-    if (c.o) outs[c.o] = (outs[c.o]||0) + 1;
-  });
-  const sorted = Object.entries(cats).sort((a,b) => b[1]-a[1]);
-  const top = sorted[0];
-  const withOutcome = crimes.filter(c => c.o).length;
-
-  const change = (a, b) => {
-    if (b === null || !b) return {txt:'no comparison', cls:''};
-    const pc = ((a-b)/b)*100;
-    const dir = pc >= 0 ? 'up' : 'down';
-    return {txt:`${pc >= 0 ? '+' : ''}${pc.toFixed(1)}%`, cls:dir};
-  };
-  const vsPrev = change(now, prev), vsAvg = change(now, avg);
-
-  document.getElementById('detail').innerHTML = `
-    <div class="stats">
-      <div class="card red">
-        <div class="cl">Recorded crimes</div>
-        <div class="cv">${now.toLocaleString()}</div>
-        <div class="cs">${monthName(month)}</div>
-      </div>
-      <div class="card">
-        <div class="cl">On previous month</div>
-        <div class="cv ${vsPrev.cls}">${vsPrev.txt}</div>
-        <div class="cs">${prev !== null ? prev.toLocaleString() + ' in ' + monthName(months[i-1].month) : 'earliest month held'}</div>
-      </div>
-      <div class="card blue">
-        <div class="cl">On 12 month average</div>
-        <div class="cv ${vsAvg.cls}">${vsAvg.txt}</div>
-        <div class="cs">average ${Math.round(avg).toLocaleString()} a month</div>
-      </div>
-      <div class="card">
-        <div class="cl">Most common</div>
-        <div class="cv sm">${top ? label(top[0]) : 'None'}</div>
-        <div class="cs">${top ? top[1] + ' of ' + now.toLocaleString() : ''}</div>
-      </div>
-      <div class="card">
-        <div class="cl">Outcome recorded</div>
-        <div class="cv">${now ? Math.round((withOutcome/now)*100) : 0}%</div>
-        <div class="cs">${withOutcome.toLocaleString()} cases</div>
-      </div>
-    </div>
-
-    <div class="g-map">
-      <div class="panel">
-        <div class="ph"><span class="pt">Where</span>
-          <span class="ps">Locations are approximate. Click a point for detail.</span></div>
-        <div id="map"></div>
-      </div>
-      <div class="panel">
-        <div class="ph"><span class="pt">By type</span><span class="ps">Top ten</span></div>
-        <div class="pb"><div class="cw"><canvas id="cat"></canvas></div></div>
-      </div>
-    </div>
-
-    <div class="g-2">
-      <div class="panel">
-        <div class="ph"><span class="pt">Full breakdown</span>
-          <span class="ps">Change is against the 12 month average</span></div>
-        <table>
-          <thead><tr><th>Category</th><th class="num">Count</th><th class="pct">Share</th>
-            <th class="delta">Change</th><th style="min-width:70px"></th></tr></thead>
-          <tbody>${sorted.map(([c,n]) => {
-            const catAvg = months.reduce((s,m) => s + ((m.categories||{})[c]||0), 0) / months.length;
-            const d = area === 'all' && catAvg
-              ? (() => { const p = ((n-catAvg)/catAvg)*100;
-                  return `<span class="${p>=0?'up':'down'}">${p>=0?'+':''}${p.toFixed(0)}%</span>`; })()
-              : '<span style="color:var(--grey)">·</span>';
-            return `<tr>
-              <td><span class="cn"><span class="dot" style="background:${colour(c)}"></span>${label(c)}</span></td>
-              <td class="num">${n}</td>
-              <td class="pct">${((n/crimes.length)*100).toFixed(1)}%</td>
-              <td class="delta">${d}</td>
-              <td><div class="barw"><div class="barf" style="width:${(n/sorted[0][1])*100}%;background:${colour(c)}"></div></div></td>
-            </tr>`;
-          }).join('')}</tbody>
-        </table>
-      </div>
-      <div class="panel">
-        <div class="ph"><span class="pt">What happened next</span>
-          <span class="ps">Recorded outcomes</span></div>
-        <div class="pb"><div class="cw-md"><canvas id="out"></canvas></div></div>
-      </div>
-    </div>`;
-
+  document.getElementById('app').innerHTML = html;
+  document.querySelectorAll('.chart button').forEach(b => b.onclick = () => { month = b.dataset.m; render(); });
+  document.querySelectorAll('.areas tr[data-a]').forEach(r => r.onclick = () => { area = r.dataset.a; document.getElementById('area').value = area; render(); window.scrollTo(0, 0); post(true); });
   drawMap(crimes);
-  drawCats(sorted.slice(0,10), crimes.length);
-  drawOutcomes(outs);
-
-  document.getElementById('src').innerHTML =
-    `Source: <a href="https://data.police.uk" target="_blank" rel="noopener">data.police.uk</a>, ` +
-    `North Wales Police, published under the Open Government Licence. ` +
-    `${areaLabel()}, ${monthName(month)}. Retrieved ${new Date(raw.fetched).toLocaleDateString('en-GB')}. ` +
-    `Locations are approximate points rather than exact addresses, so several crimes can share one marker. ` +
-    `Police.uk publishes about two months in arrears. ` +
-    `Totals are close but not exact: crimes recorded without a persistent identifier cannot be ` +
-    `de-duplicated where neighbourhood boundaries meet.`;
+  post();
 }
-
-// ---------------------------------------------------------------- charts
-function killCharts(){ charts.forEach(c => c.destroy()); charts = []; }
 
 function drawMap(crimes) {
-  if (map) { map.remove(); map = null; }
-  map = L.map('map', {scrollWheelZoom:false});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    {attribution:'© OpenStreetMap © CARTO', maxZoom:16}).addTo(map);
-
-  const pts = crimes.filter(c => c.lat && c.lng);
-  if (!pts.length) { map.setView([53.19,-3.09], 10); return; }
-
-  const group = L.featureGroup();
-  pts.forEach(c => {
-    L.circleMarker([c.lat, c.lng], {radius:5, fillColor:colour(c.c), color:'#fff',
-      weight:1, opacity:.9, fillOpacity:.78})
-     .bindPopup(`<strong>${label(c.c)}</strong><br>${c.s || 'Location not given'}` +
-                (c.o ? `<br><small>${c.o}</small>` : ''))
-     .addTo(group);
+  map = L.map('map', {scrollWheelZoom: false});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 18, attribution: '&copy; OpenStreetMap contributors'}).addTo(map);
+  const pts = [];
+  crimes.forEach(c => {
+    if (c.lat == null) return;
+    pts.push([c.lat, c.lng]);
+    L.circleMarker([c.lat, c.lng], {radius: 5, weight: 1, color: '#fff', fillColor: col(c.c), fillOpacity: .85})
+      .bindPopup(`<b>${esc(nm(c.c))}</b><br>${esc(c.s)}<br><span style="color:#6c757d">${esc(c.o || (c.c === 'anti-social-behaviour' ? 'No outcome recorded for anti-social behaviour' : 'No outcome recorded yet'))}</span>`).addTo(map);
   });
-  group.addTo(map);
-  map.fitBounds(group.getBounds(), {padding:[20,20], maxZoom:13});
+  if (pts.length) map.fitBounds(pts, {padding: [20, 20], maxZoom: 15}); else map.setView([53.2, -3.1], 10);
 }
 
-function drawCats(sorted, total) {
-  const ctx = document.getElementById('cat')?.getContext('2d');
-  if (!ctx) return;
-  charts.push(new Chart(ctx, {
-    type:'doughnut',
-    data:{labels:sorted.map(([c])=>label(c)),
-      datasets:[{data:sorted.map(([,n])=>n),
-        backgroundColor:sorted.map(([c])=>colour(c)), borderWidth:2, borderColor:'#fff'}]},
-    options:{responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{position:'right',
-        labels:{font:{family:'Barlow',size:11}, boxWidth:10, padding:7}},
-        tooltip:{callbacks:{label:c => ` ${c.label}: ${c.raw} (${((c.raw/total)*100).toFixed(1)}%)`}}}}
-  }));
+function post(top) {
+  try { parent.postMessage({deesideWidget: 'crime-page', height: document.getElementById('page').offsetHeight + 10, top: !!top}, '*'); } catch (e) {}
 }
+addEventListener('resize', () => post());
+if (window.ResizeObserver) new ResizeObserver(() => post()).observe(document.getElementById('page'));
+if (window.self !== window.top) document.body.classList.add('embedded');
 
-function drawOutcomes(outs) {
-  const ctx = document.getElementById('out')?.getContext('2d');
-  if (!ctx) return;
-  const s = Object.entries(outs).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  charts.push(new Chart(ctx, {
-    type:'bar',
-    data:{labels:s.map(([o])=>o.length>34?o.slice(0,32)+'…':o),
-      datasets:[{data:s.map(([,v])=>v), backgroundColor:'#111', borderRadius:2}]},
-    options:{indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{x:{grid:{color:'#eee'}, ticks:{font:{family:'Barlow',size:11}}},
-              y:{grid:{display:false}, ticks:{font:{family:'Barlow',size:11}}}}}
-  }));
-}
-
-// ---------------------------------------------------------------- start
-async function start() {
-  try {
-    const [iR, aR] = await Promise.all([
-      fetch(DATA + 'index.json'),
-      fetch(DATA + 'areas-lite.json')
-    ]);
-    if (!iR.ok) throw new Error('Crime data is not available right now');
-    index = await iR.json();
-    areas = aR.ok ? await aR.json() : [];
-    deeside = areas.filter(a => a.deeside).map(a => a.id);
-
-    const sel = document.getElementById('area');
-    if (deeside.length) {
-      const o = document.createElement('option');
-      o.value = 'deeside'; o.textContent = 'Key Deeside areas';
-      sel.appendChild(o);
-    }
-    [...areas].sort((a,b) => a.name.localeCompare(b.name)).forEach(a => {
-      const o = document.createElement('option');
-      o.value = a.id; o.textContent = a.name;
-      sel.appendChild(o);
-    });
-    sel.onchange = () => {
-      area = sel.value;
-      killCharts();
-      drawTrend();
-      select(selected);
-    };
-
-    selected = index.months[0].month;
-    drawTrend();
-    await select(selected);
-  } catch (e) {
-    status(e.message, true);
-    document.getElementById('detail').innerHTML =
-      `<div class="panel loading">Crime data could not be loaded. Try again shortly.</div>`;
-  }
-}
-start();
+Promise.all([fetch('data/index.json?t=' + Math.floor(Date.now() / 3600000)).then(r => r.json()), fetch('data/areas-lite.json').then(r => r.json())]).then(([idx, al]) => {
+  IDX = idx; LIST = al.slice().sort((a, b) => a.name.localeCompare(b.name)); al.forEach(a => AREAS[a.id] = a);
+  month = IDX.latest_available;
+  const q = new URLSearchParams(location.search).get('area');
+  const sel = document.getElementById('area');
+  sel.innerHTML = '<option value="all">All Flintshire</option><option value="deeside">Deeside area</option><optgroup label="Neighbourhood areas">' +
+    LIST.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('') + '</optgroup>';
+  if (q && (AREAS[q] || q === 'deeside')) area = q;
+  sel.value = area;
+  sel.onchange = () => { area = sel.value; render(); };
+  render();
+}).catch(() => { document.getElementById('app').innerHTML = '<div class="loading">Crime figures are unavailable right now.</div>'; post(); });
 </script>
 </body>
 </html>

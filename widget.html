@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crime in Flintshire</title>
+<link rel="stylesheet" href="../deeside-widgets/house.css?v=3">
+<style>
+.sub { padding: 10px 14px 0; font-size: 12.5px; color: var(--muted); }
+.stats { display: grid; grid-template-columns: 1fr 1fr; padding: 4px 0 10px; }
+.s { padding: 4px 14px; }
+.s + .s { border-left: 1px solid var(--rule); }
+.big { font-size: 32px; font-weight: 800; color: var(--head); letter-spacing: -1px; line-height: 1.1; }
+.big.up { color: var(--red); } .big.down { color: var(--green-dk); }
+.lbl { font-size: 12px; color: var(--muted); line-height: 1.35; }
+.spark { display: flex; align-items: flex-end; gap: 3px; height: 44px; padding: 0 14px; }
+.spark i { flex: 1; background: #ced4da; border-radius: 2px 2px 0 0; }
+.spark i:last-child { background: var(--green); }
+.sl { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); padding: 3px 14px 8px; }
+.top3 { border-top: 1px solid var(--rule); padding: 8px 14px 10px; font-size: 12.5px; }
+.top3 div { display: flex; justify-content: space-between; padding: 2px 0; }
+.top3 b { color: var(--head); }
+</style>
+</head>
+<body>
+<a class="card" id="w" href="https://www.deeside.com/flintshire-crime/" target="_top">
+  <div class="card-hd"><h3>Crime in Flintshire</h3><span class="upd" id="upd"></span></div>
+  <div class="load" id="body">Loading…</div>
+</a>
+<script>
+const NAMES = {'violent-crime':'Violence and sexual offences','anti-social-behaviour':'Anti-social behaviour','criminal-damage-arson':'Criminal damage and arson',
+  'shoplifting':'Shoplifting','public-order':'Public order','other-theft':'Other theft','vehicle-crime':'Vehicle crime','other-crime':'Other crime',
+  'burglary':'Burglary','drugs':'Drugs','possession-of-weapons':'Possession of weapons','bicycle-theft':'Bicycle theft','robbery':'Robbery','theft-from-the-person':'Theft from the person'};
+const fm = (m, o) => new Date(m + '-15T12:00:00Z').toLocaleDateString('en-GB', o);
+fetch('data/index.json?t=' + Math.floor(Date.now() / 3600000)).then(r => r.json()).then(d => {
+  const ms = d.months, cur = ms[0], prev = ms[1], last12 = ms.slice(0, 12).reverse();
+  const ch = prev ? Math.round((cur.total - prev.total) / prev.total * 1000) / 10 : null;
+  const max = Math.max(...last12.map(m => m.total));
+  const top = Object.entries(cur.categories).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  document.getElementById('upd').textContent = fm(cur.month, {month: 'long', year: 'numeric'});
+  document.getElementById('body').outerHTML =
+    `<div class="sub">Crimes recorded by North Wales Police in ${fm(cur.month, {month: 'long'})}</div>
+    <div class="stats"><div class="s"><div class="big">${cur.total.toLocaleString('en-GB')}</div><div class="lbl">crimes in Flintshire</div></div>
+    <div class="s"><div class="big ${ch > 0 ? 'up' : ch < 0 ? 'down' : ''}">${ch === null ? 'n/a' : (ch > 0 ? '+' : '') + ch + '%'}</div><div class="lbl">on ${prev ? fm(prev.month, {month: 'long'}) : 'last month'}</div></div></div>
+    <div class="spark">${last12.map(m => `<i style="height:${Math.max(4, m.total / max * 100)}%" title="${fm(m.month, {month: 'short', year: 'numeric'})}: ${m.total}"></i>`).join('')}</div>
+    <div class="sl"><span>${fm(last12[0].month, {month: 'short', year: 'numeric'})}</span><span>${fm(cur.month, {month: 'short', year: 'numeric'})}</span></div>
+    <div class="top3">${top.map(([c, n]) => `<div><span>${NAMES[c] || c}</span><b>${n}</b></div>`).join('')}</div>
+    <div class="card-ft"><span>Your area, map and trends</span><small>data.police.uk</small></div>`;
+  size();
+}).catch(() => { document.getElementById('body').textContent = 'Crime figures are unavailable right now.'; size(); });
+function size() { try { parent.postMessage({deesideWidget: 'crime', height: document.getElementById('w').offsetHeight + 6}, '*'); } catch (e) {} }
+addEventListener('resize', size);
+if (window.ResizeObserver) new ResizeObserver(size).observe(document.getElementById('w'));
+</script>
+</body>
+</html>
