@@ -126,11 +126,11 @@ async function render() {
   </div>`;
 
   html += `<div class="sec"><h2>Twelve months</h2><div class="sub">Crimes recorded each month in ${esc(areaName())}. Click a month to see its detail.</div>
-    <div class="chart">${months.map(m => { const v = areaTotal(m, area); return `<button data-m="${m.month}" class="${m.month === month ? 'on' : ''}" aria-label="${fmtM(m.month)}: ${v} crimes"><span>${v}</span><i style="height:${Math.max(2, v / max * 100)}%"></i></button>`; }).join('')}</div>
+    <div class="chart">${months.map(m => { const v = areaTotal(m, area); return `<button data-m="${m.month}" class="${m.month === month ? 'on' : ''}" aria-label="${fmtM(m.month)}: ${v} crimes"><span>${v.toLocaleString('en-GB')}</span><i style="height:${Math.max(2, v / max * 100)}%"></i></button>`; }).join('')}</div>
     <div class="months">${months.map(m => `<span>${m.month === month ? '<b>' : ''}${fmtM(m.month, {month: 'short'})}${m.month.endsWith('-01') || m === months[0] ? '<br>' + m.month.slice(0, 4) : ''}${m.month === month ? '</b>' : ''}</span>`).join('')}</div>
     <div class="avg">12-month average: ${Math.round(avg).toLocaleString('en-GB')} a month.</div></div>`;
 
-  html += `<div class="cols"><div class="sec types"><h2>By type</h2><div class="sub">${fmtM(month)}. ${nonAsb ? Math.round(withOut / nonAsb * 100) + '% of crimes other than anti-social behaviour have an outcome recorded so far.' : ''}</div>
+  html += `<div class="cols"><div class="sec types"><h2>By type</h2><div class="sub">${fmtM(month)}. Most common first.</div>
     ${ranked.map(([c, n]) => `<div class="t"><span>${esc(nm(c))}</span><span class="bar"><i style="width:${n / ranked[0][1] * 100}%;background:${col(c)}"></i></span><b>${n}</b></div>`).join('') || '<p class="sub">No crimes recorded.</p>'}
   </div><div class="sec"><h2>Where</h2><div class="sub">Approximate locations, ${fmtM(month)}. Click a dot for details.</div><div id="map"></div></div></div>`;
 
